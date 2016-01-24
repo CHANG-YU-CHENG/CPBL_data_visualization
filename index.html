@@ -259,17 +259,9 @@ function printView(a_obj){
 		.duration(500)
 		.attr({
 			'd': averageLine(data),
-		});		
-	/* 在折線圖上,畫折線下區域 */
-	/*
-	s.append('path')
-		.attr({
-			'd': area(data), //折線下區域的資料,為d3的area function回傳的值
-			'stroke': 'none', //區域外框線顏色
-			'fill': 'rgba(0,150,255,.1)', //區域是否填滿
-			'transform':'translate(35,150)'  //折線套用translate(svg的function,用來將整個折線往右350,往下150)
 		});	
-	*/
+		
+	/* 在折線圖上,畫折線下區域 */
 	var lineArea = s.append('path')
 		.attr({
 			'id':'path_lineArea',
@@ -427,30 +419,6 @@ function printView(a_obj){
 		});		
 	
 	/* 長條圖的數值 */
-	/*
-	var barNum = s.append('svg')
-	 .selectAll('text')
-		.data(averagePlayerList)
-		.enter()
-		.append('text')
-		.text(function(d){return 0 ;})
-		.attr({
-			'fill':'#000',
-			'x':33,
-			'y':function(d,i){return (i+1)*19-5;},
-			'transform':'translate(100,150)'
-			})
-		.transition()
-		.duration(1500)
-		.attr({
-			'x':function(d){ return playerlistScaleX(d)+33; }
-		})
-		.tween('valueNum',function(d){
-			var format = d3.format('04.2f');
-			var i = d3.interpolate(0, d);
-            return function(t){this.textContent = format(i(t));};
-		});
-	*/
 	var barNum = s.append('svg')
 			.selectAll('text')
 			.data(averagePlayerList)
@@ -777,12 +745,7 @@ function printView(a_obj){
 				'fill':function(d){ return 'rgba(0,255,0,'+(0.3+0.001*(playerlistScaleX(d)))+')';}, //長條圖顏色 			
 				'width':function(d){ return playerlistScaleX(d);}
 			});	
-		/*
-		barName
-			.attr({
-				'y':function(d,i){return (i+1)*19-8;},
-			});	
-		*/		
+	
         barNum
 			.data(averagePlayerList)
 			.transition()
@@ -795,9 +758,7 @@ function printView(a_obj){
 				var i = d3.interpolate(0, d);
 				return function(t){this.textContent = format(i(t));};
 			});
-
-	}
-		
+	}		
 }
   </script>
 </body>
