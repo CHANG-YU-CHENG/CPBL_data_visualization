@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="UTF-8">
+	<script src='https://cdn.firebase.com/js/client/2.2.1/firebase.js'></script>
+    <script src='https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js'></script>
+	<script src ="http://d3js.org/d3.v3.min.js"></script>
+</head>
+
+<body>
+	<svg id="graph"></svg>
+  
+	<script>
+
+	var myDataRef = new Firebase('https://cpblplayerdatas.firebaseio.com/');
+	var obj = {};
+	myDataRef.orderByKey().on('value', function(snapshot) {
+			obj = snapshot.val();			
+			printView(obj);
+	});
+
+function printView(a_obj){
+	var State = 'AVG'; //預設資料AVG
+	var Player = 0; //預設第一個球員
+	/* 資料 */
+	var name_list = [];
+	var averageAVG_list = [];
+	var averageH_list = [];
+	var averageHR_list = [];
+	var averageRBI_list = [];
+	var averageSB_list = [];
+	var averageSO_list = [];
+	var nameListSize = 0;
+	for(var i in a_obj){ // 計算球員數，設定球員列表，設定球員各項平均數值
+		name_list[nameListSize] = a_obj[i].name;			
+		for(var j in a_obj[i]){
+			if(j == 'average'){
+				averageAVG_list[nameListSize] = a_obj[i][j].AVG;
+				averageH_list[nameListSize] = a_obj[i][j].H;
+				averageHR_list[nameListSize] = a_obj[i][j].HR;
+				averageRBI_list[nameListSize] = a_obj[i][j].RBI;
+				averageSB_list[nameListSize] = a_obj[i][j].SB;
+				averageSO_list[nameListSize] = a_obj[i][j].SO;
+			}
+		}
+		nameListSize++;		
+	}
+	/* 設定球員名單的長與寬 */
+	var playerlistWidth = 200;
+	
+	var minAverageAVG = d3.min(averageAVG_list,function(d){return d});
+	var maxAverageAVG = d3.max(averageAVG_list,function(d){return d});
+	var averageAverageAVG = d3.mean(averageAVG_list,function(d){return d});
+	var AverageAVGScaleX = d3.scale.linear().domain([minAverageAVG-averageAverageAVG/10, maxAverageAVG+averageAverageAVG/10]).range([0, playerlistWidth]); 	 
+
+	var minAverageH = d3.min(averageH_list,function(d){return d});
+	var maxAverageH = d3.max(averageH_list,function(d){return d});
+	var averageAverageH = d3.mean(averageH_list,function(d){return d});
+	var AverageHScaleX = d3.scale.linear().domain([minAverageH-averageAverageH/10, maxAverageH+averageAverageH/10]).range([0, playerlistWidth]); 	 
+	
+	var minAverageHR = d3.min(averageHR_list,function(d){return d});
+	var maxAverageHR = d3.max(averageHR_list,function(d){return d});
+	var averageAverageHR = d3.mean(averageHR_list,function(d){return d});
+	var AverageHRScaleX = d3.scale.linear().domain([minAverageHR-averageAverageHR/10, maxAverageHR+averageAverageHR/10]).range([0, playerlistWidth]); 	 
+	
+	var minAverageRBI = d3.min(averageRBI_list,function(d){return d});
+	var maxAverageRBI = d3.max(averageRBI_list,function(d){return d});
+	var averageAverageRBI = d3.mean(averageRBI_list,function(d){return d});
+	var AverageRBIScaleX = d3.scale.linear().domain([minAverageRBI-averageAverageRBI/10, maxAverageRBI+averageAverageRBI/10]).range([0, playerlistWidth]); 	 
+	
+	var minAverageSB = d3.min(averageSB_list,function(d){return d});
+	var maxAverageSB = d3.max(averageSB_list,function(d){return d});
+	var averageAverageSB = d3.mean(averageSB_list,function(d){return d});
+	var AverageSBScaleX = d3.scale.linear().domain([minAverageSB-averageAverageSB/10, maxAverageSB+averageAverageSB/10]).range([0, playerlistWidth]); 	 	
+	
+	var minAverageSO = d3.min(averageSO_list,function(d){return d});
+	var maxAverageSO = d3.max(averageSO_list,function(d){return d});
+	var averageAverageSO = d3.mean(averageSO_list,function(d){return d});
+	var AverageSOScaleX = d3.scale.linear().domain([minAverageSO-averageAverageSO/10, maxAverageSO+averageAverageSO/10]).range([0, playerlistWidth]); 	 	
+
+	/*折線圖資料*/	
+	var data = a_obj["player01"].AVG; //預設選AVG
+	
+	var minValue = d3.min(data, function(d){return d.y});
+	var maxValue = d3.max(data, function(d){return d.y});
+	var averageValue = averageAVG_list[0];
+
+	/*畫布*/
+	var s = d3.select('#graph')
+		.attr({ //設定畫布的長與寬 
+			'width': '1300',
+			'height': '600'
+		}).style({ //畫布的外框設定
+			'border': '1px dotted #aaa'
+		});
+	
+	/* 設定折線圖的長與寬 */
+	var width = 800;
+	var height = 400;
+	/* 設定縮放的比例,domain([原資料大小,可能超過折線圖大小]),range([收縮後的資料大小,通常是折線圖的長與寬]) */
+	var scaleX = d3.scale.linear().domain([2006, 2015]).range([0, width]);
+	var scaleY = d3.scale.linear().domain([minValue-averageValue/10, maxValue+averageValue/10]).range([height, 0]); 
+
+	/* d3的畫線function */
+	var line = d3.svg.line()
+		.x(function(d) { // 設定資料的x(d.x),經過縮放後(scaleX),回傳當作新的x
+			return scaleX(d.x);
+		}).y(function(d) {
+			return scaleY(d.y);
+		});
+		
+	var averageLine = d3.svg.line()
+		.x(function(d){
+			return scaleX(d.x);
+		}).y(function(d){
+			return scaleY(averageValue);
+		});
+		
+	var line_0 = d3.svg.line()
+		.x(function(d) {
+			return scaleX(d.x);
+		}).y(function(d) {
+			return 0+height;
+		});
+		
+	/* d3的畫區域function */
+	var area = d3.svg.area()
+		.x(function(d) {
+			return scaleX(d.x);
+		})
+		.y0(height)
+		.y1(function(d) {
+			return scaleY(d.y);
+		});
+		
+	var averageArea = d3.svg.area()
+		.x(function(d) {
+			return scaleX(d.x);
+		})
+		.y0(height)
+		.y1(function(d) {
+			return scaleY(averageValue);
+		});	
+
+	var averageArea_0 = d3.svg.area()
+		.x(function(d) {
+			return scaleX(d.x);
+		})
+		.y0(height)
+		.y1(height);		
+
+	/* 設定折線圖的x軸與y軸 */	
+	var axisX = d3.svg.axis()
+		.scale(scaleX) //x軸與資料一樣要經過縮放
+		.orient("bottom") //設定x軸上的刻度資料在x軸的下方
+		.ticks(10) //共有10個刻度
+		.tickFormat(function(d){return d+'年';}); //用來在刻度後面加單位
+
+	var axisY = d3.svg.axis()
+		.scale(scaleY)
+		.orient("left")
+		.ticks(10)
+		.tickFormat(function(d){
+			var format = d3.format("04.2f");
+			return format(d)+'';
+		});
+	
+	/* 設定折線圖中間的網格線 */
+	var axisXGrid = d3.svg.axis() //一個假的x軸,讓刻度延伸至整個折線圖的高度
+		.scale(scaleX)
+		.orient("bottom")
+		.ticks(10)
+		.tickFormat("")
+		.tickSize(-height,0);
+
+    var axisYGrid = d3.svg.axis()
+		.scale(scaleY)
+		.orient("left")
+		.ticks(10)
+		.tickFormat("")
+		.tickSize(-width,0);
+		
+	function PointColors(point_y){
+		if(point_y == minValue ){
+			return 'rgba(255,0,0,.2)';
+		}
+		else if( point_y < averageValue && point_y != minValue){
+			return 'rgba(255,0,0,.2)';
+		}
+		else if( point_y >= averageValue && point_y != maxValue ){
+			return 'rgba(0,150,255,.2)';
+		}
+		else if( point_y == maxValue ){
+			return 'rgba(0,150,255,.2)';
+		}
+		return "black";
+	};
+	
+	function MouseOnPointColors(point_y){
+		if(point_y == minValue ){
+			return 'rgba(255,0,0,.5)';
+		}
+		else if( point_y < averageValue && point_y != minValue){
+			return 'rgba(255,0,0,.5)';
+		}
+		else if( point_y >= averageValue && point_y != maxValue ){
+			return 'rgba(0,150,255,.5)';
+		}
+		else if( point_y == maxValue ){
+			return 'rgba(0,150,255,.5)';
+		}
+		return "black";		
+	};
+	
+	function PointRadius(point_y){
+		if(point_y == minValue ){
+			return 20;
+		}
+		else if( point_y < averageValue && point_y != minValue){
+			return 10;
+		}
+		else if( point_y >= averageValue && point_y != maxValue ){
+			return 10;
+		}
+		else if( point_y == maxValue ){
+			return 20;
+		}
+		return 5;
+	};
+
+	
+/* ********************************畫圖******************************** */	
+	/* 在折線圖上,畫折線 */	
+	var lineChart = s.append('path')
+		.attr({
+			'id':'path_lineChart',
+			'd': line_0(data), //折線的資料,為d3的line function回傳的值
+			'stroke': 'rgba(0,0,0,.5)', //折線的顏色
+			'fill': 'none', //折線底下區域是否填滿
+			'transform':'translate(450,150)'  //折線套用translate(svg的function,用來將整個折線往右350,往下150)
+		})
+		.transition()
+		.delay(500)
+		.duration(1500)
+		.attr({
+			'd': line(data), //折線的資料,為d3的line function回傳的值
+		});
+		
+	var averageLineChart = s.append('path')
+		.attr({
+			'id':'path_averageLineChart',
+			'd':line_0(data),
+			'stroke': 'rgba(255,0,0,.1)',
+			'fill': 'none',
+			'transform':'translate(450,150)'
+		})
+		.transition()
+		.duration(500)
+		.attr({
+			'd': averageLine(data),
+		});		
+	/* 在折線圖上,畫折線下區域 */
+	/*
+	s.append('path')
+		.attr({
+			'd': area(data), //折線下區域的資料,為d3的area function回傳的值
+			'stroke': 'none', //區域外框線顏色
+			'fill': 'rgba(0,150,255,.1)', //區域是否填滿
+			'transform':'translate(35,150)'  //折線套用translate(svg的function,用來將整個折線往右350,往下150)
+		});	
+	*/
+	var lineArea = s.append('path')
+		.attr({
+			'id':'path_lineArea',
+			'd': averageArea_0(data), //折線下區域的資料,為d3的area function回傳的值
+			'stroke': 'none', //區域外框線顏色
+			'fill': 'rgba(255,0,0,.1)', //區域是否填滿
+			'transform':'translate(450,150)'  //折線套用translate(svg的function,用來將整個折線往右350,往下150)
+		})
+		.transition()
+		.duration(500)
+		.attr({
+			'd': averageArea(data),
+		});		
+		;
+	/* 在折線圖上畫x軸與y軸 */
+	var lineAxisX = s.append('g')
+		.call(axisX)
+		.attr({
+			'id':'g_lineAxisX',
+			'fill':'none',
+			'stroke':'#000', //x軸的顏色
+			'transform':'translate(450,'+(height+150)+')' //x軸預設在畫布的頂部
+		})
+	 .selectAll('text') //對於x軸上的所有文字(刻度)
+		.attr({
+			'fill':'#000',
+			'stroke':'none',
+		}).style({
+			'font-size':'11px'
+		});
+
+	var lineAxisY = s.append('g')
+		.call(axisY)
+		.attr({
+			'id':'g_lineAxisY',
+			'fill':'none',
+			'stroke':'#000',
+			'transform':'translate(450,150)'
+		})
+	 .selectAll('text')
+		.attr({
+			'fill':'#000',
+			'stroke':'none',
+		}).style({
+			'font-size':'10px'
+		});
+		
+	/* 在折線圖上畫網格線 */
+	var lineAxisXGrid = s.append('g')
+		.call(axisXGrid)
+		.attr({
+			'id':'g_lineAxisXGrid',
+			'fill':'none',
+			'stroke':'rgba(0,0,0,.1)',
+			'transform':'translate(450,'+(height+150)+')' 
+		});
+	
+	var lineAxisYGrid = s.append('g')
+		.call(axisYGrid)
+		.attr({
+			'id':'g_lineAxisYGrid',
+			'fill':'none',
+			'stroke':'rgba(0,0,0,.1)',
+			'transform':'translate(450,150)' 
+		});
+	
+	/* 在折線上畫出各點圓圈 */
+	var lineCircles = s.selectAll('circle')
+		.data(data)
+		.enter()
+		.append('circle')
+		.attr("cx", function (d) { return scaleX(d.x); })
+		.attr("cy", function (d) { return scaleY(d.y); })
+		.attr("r", 0 )
+		.attr({'transform':'translate(450,150)'})
+		.style("fill", function(d) { return PointColors(d.y); })
+		.transition()
+		.delay(1500)
+		.duration(1500)
+		.attr("r", function (d) { return PointRadius(d.y); });
+	
+	/*各點的標籤*/
+	var labels = s.append('svg')
+		 .selectAll('text')
+			.data(data)
+			.enter()
+			.append('text')
+			.text(function(d){
+				return '('+d.y+')' ;
+			})
+			.attr({
+				'fill':'#000',
+				'x':function(d){return scaleX(d.x);},
+				'y':function(d){return scaleY(d.y);},
+				'transform':'translate(450,130)' // 位置跟其他的不一樣!!
+			})
+			.style(
+				'opacity',0 //透明
+			);
+	
+	/* 各點圓圈的mouse功能 */
+	s.selectAll('circle')
+		.on("mouseover", function(d){
+			$('body').css('cursor','pointer');
+			d3.select(this)
+				.transition()
+				.duration(500)
+				.style("fill", MouseOnPointColors(d.y) );
+			var circle_d = d;
+			labels.select(function(d){
+				if(d == circle_d) return this;
+			})
+			.transition()
+			.delay(300)
+			.style('opacity',1);
+		})
+        .on("mouseout", function(d){
+			$('body').css('cursor','auto');
+			d3.select(this)
+				.transition()
+				.duration(500)
+				.style("fill", PointColors(d.y) );
+			labels			
+			.transition()
+			.delay(300)
+			.style('opacity',0);			
+		});	
+		
+	/* 設定球員名單(長條圖)按鈕 */
+	var averagePlayerList = averageAVG_list;	//預設選AVG	
+	var playerlistScaleX = AverageAVGScaleX;
+	
+	s.selectAll('rect')
+		.data(averagePlayerList)
+		.enter()
+		.append('rect')
+		.attr({
+			'fill':function(d){ return 'rgba(0,255,0,'+(0.3+0.001*(playerlistScaleX(d)))+')';}, //長條圖顏色 
+			'width':0, //長條圖的長
+			'height':15, //長條圖的寬
+			'x':30,
+			'y':function(d,i){ return i*19;},
+			'transform':'translate(100,150)' //長條圖在畫布上的位置
+		})
+		.transition()
+		.duration(1500)
+		.attr({
+			'width':function(d){ return playerlistScaleX(d);}
+		})
+		.style({
+			"stroke":function(d,i){
+				if(i == 0) return "yellow";
+				return "none";
+			},
+		});		
+	
+	/* 長條圖的數值 */
+	/*
+	var barNum = s.append('svg')
+	 .selectAll('text')
+		.data(averagePlayerList)
+		.enter()
+		.append('text')
+		.text(function(d){return 0 ;})
+		.attr({
+			'fill':'#000',
+			'x':33,
+			'y':function(d,i){return (i+1)*19-5;},
+			'transform':'translate(100,150)'
+			})
+		.transition()
+		.duration(1500)
+		.attr({
+			'x':function(d){ return playerlistScaleX(d)+33; }
+		})
+		.tween('valueNum',function(d){
+			var format = d3.format('04.2f');
+			var i = d3.interpolate(0, d);
+            return function(t){this.textContent = format(i(t));};
+		});
+	*/
+	var barNum = s.append('svg')
+			.selectAll('text')
+			.data(averagePlayerList)
+			.enter()
+			.append('text')
+			.text(function(d){return 0 ;})
+			.attr({
+				'fill':'#000',
+				'x':33,
+				'y':function(d,i){return (i+1)*19-5;},
+				'transform':'translate(100,150)',
+				'font-size':'14px'
+			});	
+			
+	barNum
+		.transition()
+		.duration(1500)
+		.attr({
+			'x':function(d){ return playerlistScaleX(d)+33; }
+		})
+		.tween('valueNum',function(d){
+			var format = d3.format('04.2f');
+			var i = d3.interpolate(0, d);
+            return function(t){this.textContent = format(i(t));};
+		});		
+	
+	var barName = s.append('svg')
+			.selectAll('text')
+			.data(name_list)
+			.enter()
+			.append('text')
+			.text(function(d){return d ;})
+			.attr({
+				'fill':'#000',
+				'x':33,
+				'y':function(d,i){return (i+1)*19-8;},
+				'transform':'translate(20,150)',
+				'font-size':'11px'
+			});		
+	
+	/* 各個長條圖的功能 */
+	s.selectAll('rect')
+		.on("mouseover", function(d){
+			$('body').css('cursor','pointer');
+			d3.select(this)
+				.style({
+					"stroke":'yellow',
+				})				
+		})
+        .on("mouseout", function(d,i){
+			$('body').css('cursor','auto');
+			d3.select(this)
+				.style({
+					"stroke":function(d){
+						if(i == Player) return "yellow";
+						return "none";
+					},
+				});		
+		})
+		.on("click", function(d,i){	
+			d3.selectAll('rect')
+				.style({
+					"stroke":"none"
+					});	
+			Player = i;
+			d3.selectAll('rect')
+				.style({
+					"stroke":function(d,i){ 
+								if(i == Player) return 'yellow';
+								return 'none';
+							},	
+				});			
+			_transition(Player);			
+		});	
+		
+	function _transition(i){
+		var id = i+1;
+		if(id<10) id = '0'+id;		
+		else id = id;		
+		var data;
+		for(x in a_obj){
+			if(x == ('player'+id)){
+				if(State == 'AVG') data = a_obj[x].AVG;
+				if(State == 'H') data = a_obj[x].H;
+				if(State == 'HR') data = a_obj[x].HR;
+				if(State == 'RBI') data = a_obj[x].RBI;
+				if(State == 'SB') data = a_obj[x].SB;
+				if(State == 'SO') data = a_obj[x].SO;
+			}
+		}
+		minValue = d3.min(data, function(d){return d.y});
+		maxValue = d3.max(data, function(d){return d.y});
+		if(State == 'AVG') 	averageValue = averageAVG_list[i];
+		if(State == 'H') averageValue = averageH_list[i];
+		if(State == 'HR') averageValue = averageHR_list[i];
+		if(State == 'RBI') averageValue = averageRBI_list[i];
+		if(State == 'SB') averageValue = averageSB_list[i];
+		if(State == 'SO') averageValue = averageSO_list[i]; 
+
+		scaleX = d3.scale.linear().domain([2006, 2015]).range([0, width]);
+		scaleY = d3.scale.linear().domain([minValue-averageValue/10, maxValue+averageValue/10]).range([height, 0]);		
+		d3.select('#path_lineChart')
+			.transition()
+			.duration(1500)
+			.attr({
+				'd': line(data), 
+			});
+			
+		d3.select('#path_averageLineChart')
+			.transition()
+			.duration(1500)
+			.attr({
+				'd': averageLine(data),
+			});		
+
+		d3.select('#path_lineArea')
+			.transition()
+			.duration(1500)
+			.attr({
+				'd': averageArea(data),
+			});
+			
+		axisY = d3.svg.axis()
+			.scale(scaleY)
+			.orient("left")
+			.ticks(10)
+			.tickFormat(function(d){
+				var format = d3.format("04.2f");
+				return format(d)+'';
+			});	
+						
+		d3.select('#g_lineAxisY')
+			.transition()
+			.duration(1500)		
+			.call(axisY)
+		 .selectAll('text')
+			.attr({
+				'fill':'#000',
+				'stroke':'none',
+				})
+			.style({
+				'font-size':'11px'
+				});
+		
+		axisYGrid = d3.svg.axis()
+			.scale(scaleY)
+			.orient("left")
+			.ticks(10)
+			.tickFormat("")
+			.tickSize(-width,0);
+
+		d3.select('#g_lineAxisYGrid')
+			.transition()
+			.duration(1500)		
+			.call(axisYGrid)
+	
+		s.selectAll('circle')
+			.data(data)		
+			.style("fill", function(d) { return 'rgba(255,0,0,0.1)'; })
+			.transition()
+			.duration(1500)
+			.attr("cx", function (d) { return scaleX(d.x); })
+			.attr("cy", function (d) { return scaleY(d.y); })
+			.style("fill", function(d) { return PointColors(d.y); })
+			.attr("r", function (d) { return PointRadius(d.y); });		
+			
+		labels
+			.data(data)
+			.text(function(d){
+				return '('+d.y+')' ;
+			})
+			.attr({
+				'x':function(d){return scaleX(d.x);},
+				'y':function(d){return scaleY(d.y);},
+			});
+	}
+	
+	var stateData = ['AVG','H','HR','RBI','SB','SO'];
+	var stateExplanation = ['打擊率 = 安打/打數','安打','全壘打','打點','盜壘','被三振'];
+	
+	/* 橢圓形按鈕內的字 */
+	s.append('svg')
+	 .selectAll('text')
+		.data(stateData)
+		.enter()
+		.append('text')
+		.text(function(d){return d;})
+		.attr({
+			'fill':'rgba(0,0,0,0)',
+			'stroke':'rgba(0,0,0,1)',
+			'stroke-width':1,
+			'font-size':'25px',
+			'x':function(d,i){ 
+				if(i==0||i==3) return i*180+130;
+				return i*180+140; 
+				},
+			'y':67,
+			});
+		
+	var State_explanation = s.append('svg')
+		.selectAll('text')
+		.data(stateExplanation)
+		.enter()
+		.append('text')
+		.text(function(d){return d;})
+		.attr({
+			'fill':'rgba(0,0,0,0)',
+			'font-size':'16px',
+			'x':function(d,i){ 
+				if(i==0||i==3) return i*180+140;
+				return i*180+150; 
+				},
+			'y':100,
+			});		
+	
+	/* 橢圓形按鈕 */
+	s.append('svg')
+	.append('g')
+	.selectAll('ellipse')
+		.data(stateData)
+		.enter()
+		.append('ellipse')
+		.attr({
+			'cx':function(d,i){ return i*180+150; }, //橢圓形按鈕的位置
+			'cy':60,
+			'rx':70, //橢圓形按鈕的長寬
+			'ry':20,
+			'fill':function(d,i){ 
+				if(i==0) return 'rgba(255,255,0,0.2)'; //預設選擇 AVG
+				return 'rgba(255,255,0,0)'; 
+				},
+			'stroke':'rgba(255,255,0,0.2)',
+			'stroke-width':2,
+		})
+		.on("mouseover", function(d,i){
+			var mouseoverI = i;
+			$('body').css('cursor','pointer');
+			d3.select(this)
+				.transition()
+				.duration(500)
+				.attr({
+					'fill':'rgba(255,255,0,0.2)',
+				});
+			
+			State_explanation
+				.transition()
+				.duration(500)
+				.attr({
+					'fill':function(d,i){
+						if(i == mouseoverI) return 'rgba(0,0,0,1)';
+						return 'rgba(0,0,0,0)';
+					},
+				});				
+		})
+        .on("mouseout", function(d){
+			$('body').css('cursor','auto');	
+			d3.select(this)
+				.transition()
+				.duration(500)				
+				.attr({
+					'fill':function(d){
+						if(d == State) return 'rgba(255,255,0,0.2)';
+						return 'rgba(255,255,0,0)';
+					},
+				});	
+
+			State_explanation
+				.transition()
+				.duration(500)
+				.attr({
+					'fill':'rgba(0,0,0,0)'
+				});						
+		})
+		.on("click", function(d,i){
+			StateTransition(d,i);
+			d3.selectAll('ellipse')
+				.transition()
+				.duration(500)				
+				.attr({
+					'fill':function(d){
+						if(d == State) return 'rgba(255,255,0,0.2)';
+						return 'rgba(255,255,0,0)';
+					},
+				});			
+		});
+		
+	function StateTransition(d,i){
+		if(i == 0){ 
+			State = 'AVG';
+			BarTransition(averageAVG_list,AverageAVGScaleX);
+		}
+		if(i == 1){ 
+			State = 'H';
+			BarTransition(averageH_list,AverageHScaleX);
+		}
+		if(i == 2){ 
+			State = 'HR';
+			BarTransition(averageHR_list,AverageHRScaleX);
+		}
+		if(i == 3){ 
+			State = 'RBI';
+			BarTransition(averageRBI_list,AverageRBIScaleX);
+		}
+		if(i == 4){ 
+			State = 'SB';
+			BarTransition(averageSB_list,AverageSBScaleX);
+		}
+		if(i == 5){ 
+			State = 'SO';
+			BarTransition(averageSO_list,AverageSOScaleX);
+		}
+		_transition(Player);
+	}
+	
+	function BarTransition(average_list,scale){
+		averagePlayerList = average_list;		
+		playerlistScaleX = scale;	
+		
+		s.selectAll('rect')
+			.data(averagePlayerList)
+			.transition()
+			.duration(1500)
+			.attr({
+				'fill':function(d){ return 'rgba(0,255,0,'+(0.3+0.001*(playerlistScaleX(d)))+')';}, //長條圖顏色 			
+				'width':function(d){ return playerlistScaleX(d);}
+			});	
+		/*
+		barName
+			.attr({
+				'y':function(d,i){return (i+1)*19-8;},
+			});	
+		*/		
+        barNum
+			.data(averagePlayerList)
+			.transition()
+			.duration(1500)
+			.attr({
+				'x':function(d){ return playerlistScaleX(d)+33; }
+			})
+			.tween('valueNum',function(d){
+				var format = d3.format('04.2f');
+				var i = d3.interpolate(0, d);
+				return function(t){this.textContent = format(i(t));};
+			});
+
+	}
+		
+}
+  </script>
+</body>
+
+</html>
